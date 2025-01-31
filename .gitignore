@@ -1,0 +1,16 @@
+*.user
+*.suo
+*.vscode/
+bin/
+obj/
+.vs/
+
+x64/Debug/
+x64/Release/
+
+Lisp/x64/Debug/
+Lisp/x64/Release/
+
+Lisp/Lisp.vcxproj*
+
+Lisp/Source.lisp
