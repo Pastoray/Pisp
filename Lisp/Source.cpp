@@ -4,12 +4,14 @@
 #include <sstream>
 #include "Tokenizer.h"
 #include "Parser.h"
+#include "Interpreter.h"
+#include "Logger.h"
 
 int main(int argc, char* argv[])
 {
 	if (argc != 2)
 	{
-		std::cerr << "Usage: ./lisp <source.lisp>";
+		std::cerr << "Usage: ./lisp <source.lisp>" << std::endl;
 		return EXIT_FAILURE;
 	}
 
@@ -18,7 +20,7 @@ int main(int argc, char* argv[])
 	
 	if (!file || !file.is_open())
 	{
-		std::cerr << "Could not open file" << std::endl;
+		std::cerr << "Could not open file: " << argv[1] << std::endl;
 		return EXIT_FAILURE;
 	}
 
@@ -27,27 +29,47 @@ int main(int argc, char* argv[])
 	{
 		src << line;
 	}
-	std::cout << "Source: " << src.str() << std::endl;
+
+	LOG_DEBUG("Source: " << src.str() << std::endl);
 
 	file.close();
 
 	Tokenizer tokenizer(src.str());
 	std::vector<Token> tokens = tokenizer.tokenize();
-	std::cout << "TOKENS:" << std::endl;
+	LOG_DEBUG("TOKENS:" << std::endl);
 	for (int i = 0; i < tokens.size(); i++)
 	{
 		Token& token = tokens[i];
-		std::cout << Tokenizer::tokentype_to_string(token.type);
+		LOG_DEBUG(Tokenizer::tokentype_to_string(token.type));
 		if (i != tokens.size() - 1)
 		{
-			std::cout << ", ";
+			LOG_DEBUG(", ");
 		}
 	}
-	std::cout << std::endl;
+	LOG_DEBUG(std::endl);
+	LOG_DEBUG("Parsing..." << std::endl);
 
 	Parser parser(tokens);
-	uint16_t return_val = parser.parse_prog();
+	std::vector<Node::Stmt> stmts = parser.parse_prog();
 
-	std::cout << "return value calculated: " << return_val << std::endl;
+	LOG_DEBUG("Statements :" << std::endl);
+
+	for (const Node::Stmt& stmt : stmts)
+	{
+		LOG_DEBUG(Parser::node_to_string(stmt) << std::endl);
+	}
+
+	LOG_DEBUG("Finished Statements" << std::endl);
+
+	LOG_DEBUG("Parsing completed" << std::endl);
+
+	LOG_DEBUG("Interpreting..." << std::endl);
+	
+	Interpreter interpreter(stmts);
+	interpreter.interpret_prog();
+
+	LOG_DEBUG("Interpreting completed" << std::endl);
+
+
 	return EXIT_SUCCESS;
 }

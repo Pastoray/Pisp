@@ -15,30 +15,32 @@ namespace TokenTypes
 		OPEN_PAREN, // (
 		CLOSE_PAREN, // )
 		NONE, // temporary place holder
+
 	};
 
 	enum class Operator
 	{
+		ASGN, // =
 		MULT, // *
 		DIV, // /
 		ADD, // +
 		SUB, // -
-		ASGN, // =
 		GT, // >
 		LT, // <
 		GTE, // >=
 		LTE, // <=
-		AND, // &&
-		OR, // ||
+		AND, // &
+		OR, // |
 		BW_AND, // bitwise &
 		BW_OR, // bitwise |
+		RET, // return
 		NONE, // temporary place holder
 	};
 
 	enum class Literal
 	{
 		INT, // 123
-		ID, // x
+		IDENT, // x
 		NONE, // temporary place holder
 	};
 
@@ -46,7 +48,8 @@ namespace TokenTypes
 	{
 		IF, // if
 		ELSE, // else
-		LOOP, // loop
+		LOOP, // for
+		FUNC, // function
 		NONE, // temporary place holder
 	};
 }
@@ -86,8 +89,11 @@ public:
 	Tokenizer(const std::string& src);
 	std::vector<Token> tokenize();
 	static std::string tokentype_to_string(TokenType type);
+
 private:
 	std::optional<char> peek(int offset = 0);
+	char consume(unsigned int amount);
+	void err_exit(const std::string& msg);
 
 private:
 	const std::string m_src;
