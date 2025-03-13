@@ -2,18 +2,7 @@
 #include <iostream>
 
 #ifdef _DEBUG
-#define logger std::cout
+#define LOG_DEBUG(msg) std::cout << msg
 #else
-struct NullStream
-{
-	template<typename T>
-	NullStream& operator<<(const T&) { return *this; }
-} null_logger;
-#define logger null_logger
+#define LOG_DEBUG(msg) ((void)0)
 #endif
-
-inline void err_exit(const std::string& context, const size_t index, const std::string& msg)
-{
-	std::cerr << "[ERROR]" << "[CONTEXT:" << context << "]" << "[INDEX:" << index << "]" << " -> " << msg << std::endl;
-	exit(EXIT_FAILURE);
-}
