@@ -93,7 +93,6 @@ public:
 private:
 	std::optional<char> peek(int offset = 0);
 	char consume(unsigned int amount);
-	void err_exit(const std::string& msg);
 
 private:
 	const std::string m_src;
