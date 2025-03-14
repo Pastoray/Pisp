@@ -1,5 +1,5 @@
 #include "Tokenizer.h"
-#include "Logger.h"
+#include "Utils.h"
 
 std::ostream& operator<<(std::ostream& os, const Token& token)
 {
@@ -19,9 +19,9 @@ std::vector<Token> Tokenizer::tokenize()
 		{
 			while (peek().has_value() && std::isdigit(peek().value()))
 			{
-				LOG_DEBUG("digit index: " << m_index << std::endl);
+				logger << "digit index: " << m_index << std::endl;
 				buffer += m_src[m_index];
-				m_index++;
+				consume();
 			}
 			Token token{};
 			token.type = TokenTypes::Literal::INT;
@@ -33,11 +33,11 @@ std::vector<Token> Tokenizer::tokenize()
 		else if (std::isalpha(peek().value()))
 		{
 			buffer += peek().value();
-			m_index++;
+			consume();
 			while (peek().has_value() && std::isalnum(peek().value()))
 			{
 				buffer += m_src[m_index];
-				m_index++;
+				consume();
 			}
 			Token token{};
 			token.type = TokenTypes::Literal::IDENT;
@@ -50,63 +50,71 @@ std::vector<Token> Tokenizer::tokenize()
 			Token token{};
 			token.type = TokenTypes::Operator::ASGN;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '(')
 		{
 			Token token{};
 			token.type = TokenTypes::Symbol::OPEN_PAREN;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == ')')
 		{
 			Token token{};
 			token.type = TokenTypes::Symbol::CLOSE_PAREN;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '+')
 		{
 			Token token{};
 			token.type = TokenTypes::Operator::ADD;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '-')
 		{
 			Token token{};
 			token.type = TokenTypes::Operator::SUB;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '*')
 		{
 			Token token{};
 			token.type = TokenTypes::Operator::MULT;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '/')
 		{
-			Token token{};
-			token.type = TokenTypes::Operator::DIV;
-			tokens.push_back(token);
-			m_index++;
+			consume();
+			if (peek().has_value() && peek().value() == '/')
+			{
+				while (peek().has_value() && peek().value() != '/n')
+					consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::DIV;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == '>')
 		{
 			Token token{};
 			token.type = TokenTypes::Operator::GT;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '<')
 		{
-			m_index++;
+			consume();
 			if (peek().has_value() && peek().value() == '-')
 			{
-				m_index++;
+				consume();
 				Token token{};
 				token.type = TokenTypes::Operator::RET;
 				tokens.push_back(token);
@@ -123,55 +131,55 @@ std::vector<Token> Tokenizer::tokenize()
 			Token token{};
 			token.type = TokenTypes::Operator::BW_AND;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '|')
 		{
 			Token token{};
 			token.type = TokenTypes::Operator::BW_OR;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '?')
 		{
 			Token token{};
 			token.type = TokenTypes::Statement::IF;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == '!')
 		{
 			Token token{};
 			token.type = TokenTypes::Statement::ELSE;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == ':')
 		{
-			m_index++;
+			consume();
 			if (peek().has_value() && peek().value() == ':')
 			{
 				Token token{};
 				token.type = TokenTypes::Statement::LOOP;
 				tokens.push_back(token);
-				m_index++;
+				consume();
 			}
 			else
 			{
-				err_exit("Error tokenizing");
+				err_exit(typeid(*this).name(), m_index, "Error tokenizing");
 			}
 		}
 		else if (peek().value() == '@')
 		{
-			m_index++;
+			consume();
 			Token token{};
 			token.type = TokenTypes::Statement::FUNC;
 			tokens.push_back(token);
-			m_index++;
+			consume();
 		}
 		else if (peek().value() == ' ' || peek().value() == '\n' || peek().value() == '\t')
 		{
-			m_index++;
+			consume();
 		}
 
 	}
@@ -189,17 +197,11 @@ std::optional<char> Tokenizer::peek(int offset)
 {
 	if (amount == 0) [[unlikely]]
 	{
-		err_exit("Consume called with a value of 0");
+		err_exit(typeid(*this).name(), m_index, "Consume called with a value of 0");
 	}
 
 	m_index += amount;
 	return peek(-1).value(); // return last consumed token
-}
-
-void Tokenizer::err_exit(const std::string& msg)
-{
-	std::cerr << "[ERROR]" << "[INDEX:" << m_index << "]" << " -> " << msg << std::endl;
-	exit(EXIT_FAILURE);
 }
 
 std::string Tokenizer::tokentype_to_string(TokenType type)

@@ -68,17 +68,6 @@ struct Token
 			return *op == type_enum;
 		return false;
 	}
-	template<typename T>
-	T extract()
-	{
-		if (auto* op = std::get_if<T>(&type))
-		{
-			return *op;
-		}
-		// compare before this
-		std::cerr << "Extraction failed" << std::endl;
-		exit(EXIT_FAILURE);
-	}
 
 	friend std::ostream& operator<<(std::ostream& os, const Token& token);
 };
@@ -92,7 +81,7 @@ public:
 
 private:
 	std::optional<char> peek(int offset = 0);
-	char consume(unsigned int amount);
+	char consume(unsigned int amount = 1);
 
 private:
 	const std::string m_src;
