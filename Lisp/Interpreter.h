@@ -23,7 +23,6 @@ private:
 private:
 	std::optional<Node::Stmt> peek(int offset = 0);
 	Node::Stmt consume(unsigned int amount = 1);
-	void err_exit(const std::string& msg) const;
 	uint32_t perform_op(uint32_t v1, uint32_t v2, TokenTypes::Operator op) const;
 
 };

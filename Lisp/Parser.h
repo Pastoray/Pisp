@@ -80,9 +80,6 @@ namespace Node
 	};
 }
 
-using NodeType = std::variant<Node::BinExpr, Node::Expr, Node::Lit, Node::LitIdent,
-	Node::LitInt, Node::Scope, Node::Stmt, Node::StmtAsgn, Node::StmtIf, Node::StmtLoop>;
-
 class Parser
 {
 public:
@@ -185,7 +182,6 @@ public:
 private:
 	std::optional<Token> peek(int offset = 0);
 	Token consume(unsigned int amount = 1);
-	void err_exit(const std::string& msg);
 
 	template<typename T>
 		requires requires { typename T::value_type; }
@@ -199,6 +195,5 @@ private:
 private:
 	const std::vector<Token> m_tokens;
 	uint16_t m_index;
-
 };
 
