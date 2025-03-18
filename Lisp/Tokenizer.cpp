@@ -1,5 +1,4 @@
 #include "Tokenizer.h"
-#include "Utils.h"
 
 std::ostream& operator<<(std::ostream& os, const Token& token)
 {
@@ -116,7 +115,7 @@ std::vector<Token> Tokenizer::tokenize()
 			{
 				consume();
 				Token token{};
-				token.type = TokenTypes::Operator::RET;
+				token.type = TokenTypes::Statement::RET;
 				tokens.push_back(token);
 			}
 			else
@@ -172,10 +171,19 @@ std::vector<Token> Tokenizer::tokenize()
 		else if (peek().value() == '@')
 		{
 			consume();
-			Token token{};
-			token.type = TokenTypes::Statement::FUNC;
-			tokens.push_back(token);
-			consume();
+			if (peek().has_value() && peek().value() == '@')
+			{
+				Token token{};
+				token.type = TokenTypes::Statement::CALL;
+				tokens.push_back(token);
+				consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Struct::FUNC;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == ' ' || peek().value() == '\n' || peek().value() == '\t')
 		{

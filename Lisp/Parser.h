@@ -14,6 +14,7 @@
 #include <tuple>
 
 #include "Tokenizer.h"
+#include "Utils.h"
 
 namespace Node
 {
@@ -25,6 +26,10 @@ namespace Node
 	struct LitIdent
 	{
 		std::string id;
+		bool operator==(const LitIdent& other) const
+		{
+			return id == other.id;
+		}
 	};
 
 	struct Lit
@@ -36,23 +41,46 @@ namespace Node
 
 	struct BinExpr
 	{
-		std::shared_ptr<Expr> lhs = nullptr;
-		std::shared_ptr<Expr> rhs = nullptr;
-		TokenTypes::Operator op = TokenTypes::Operator::NONE;
+		std::optional<std::shared_ptr<Expr>> lhs;
+		std::optional<std::shared_ptr<Expr>> rhs;
+		std::optional<TokenTypes::Operator> op;
+	};
+
+	struct Stmt;
+
+	struct Scope
+	{
+		std::vector<Stmt> stmts;
+	};
+
+	struct StructFuncDecl
+	{
+		std::vector<LitIdent> params;
+		Scope scope;
+	};
+
+	struct Struct
+	{
+		std::variant<StructFuncDecl> strct;
+	};
+
+
+	struct NodeCall
+	{
+		std::variant<LitIdent, StructFuncDecl> fn;
+		std::vector<Expr> args;
 	};
 
 	struct Expr
 	{
-		std::variant<Lit, BinExpr> expr;
+		std::variant<BinExpr, Lit, NodeCall> expr;
 	};
 
 	struct StmtAsgn
 	{
 		LitIdent id;
-		Expr expr;
+		std::variant<Expr, Struct> val;
 	};
-
-	struct Scope;
 
 	struct StmtIf
 	{
@@ -69,14 +97,19 @@ namespace Node
 		std::shared_ptr<Scope> scope;
 	};
 
-	struct Stmt
+	struct StmtRet
 	{
-		std::variant<StmtAsgn, StmtIf, StmtLoop, Expr> stmt;
+		std::optional<Expr> ret_val;
 	};
 
-	struct Scope
+	struct Stmt
 	{
-		std::vector<Stmt> stmts;
+		std::variant<StmtAsgn, StmtIf, StmtLoop, StmtRet> stmt;
+	};
+
+	struct Node
+	{
+		std::variant<Expr, Stmt, Struct, Scope> node;
 	};
 }
 
@@ -84,16 +117,25 @@ class Parser
 {
 public:
 	Parser(std::vector<Token>& tokens);
-	std::vector<Node::Stmt> parse_prog();
+	std::vector<Node::Node> parse_prog();
+	std::optional<Node::Node> parse_node();
 	std::optional<Node::Expr> parse_expr();
 	std::optional<Node::Stmt> parse_stmt();
 	std::optional<Node::Scope> parse_scope();
+	std::optional<Node::Struct> parse_struct();
+	std::optional<Node::Lit> parse_lit();
+
+	std::optional<Node::StructFuncDecl> parse_func_decl();
+
 	std::optional<Node::StmtIf> parse_if_chain();
 	std::optional<Node::StmtAsgn> parse_asgn_stmt();
 	std::optional<Node::StmtIf> parse_if_stmt();
 	std::optional<Node::StmtLoop> parse_loop_stmt();
+	std::optional<Node::NodeCall> parse_call();
+	std::optional<Node::StmtRet> parse_ret_stmt();
+	
 
-	static std::string node_to_string(const Node::Stmt& node, const size_t depth = 0)
+	static std::string node_to_string(const Node::Node& node, const size_t depth = 0)
 	{
 		return std::visit([depth](auto&& stmt) -> std::string {
 			using T = std::decay_t<decltype(stmt)>;
@@ -125,9 +167,9 @@ public:
 					else if constexpr (std::is_same_v<U, Node::BinExpr>)
 					{
 						temp << inner_tab << typeid(expr).name() << " {\n";
-						temp << node_to_string(Node::Stmt{*expr.lhs}, depth + 2) + " " +
-							Tokenizer::tokentype_to_string(expr.op) + " \n" +
-							node_to_string(Node::Stmt{ *expr.rhs }, depth + 2);
+						temp << node_to_string(Node::Node{ *expr.lhs.value() }, depth + 2) + " " +
+							Tokenizer::tokentype_to_string(expr.op.value_or(TokenTypes::Operator::NONE)) + " \n" +
+							node_to_string(Node::Node{ *expr.rhs.value() }, depth + 2);
 					}
 					temp << inner_tab << "}\n";
 					return temp.str();
@@ -175,7 +217,7 @@ public:
 
 			res << tab << "}\n";
 			return res.str();
-		}, node.stmt);
+		}, node.node);
 	}
 
 
@@ -189,7 +231,7 @@ private:
 	{
 		if (opt.has_value())
 			return opt.value();
-		err_exit("Expected " + typeid(T::value_type).name());
+		err_exit(typeid(*this).name(), m_index, "Expected " + std::string(typeid(T::value_type).name()));
 	}
 
 private:

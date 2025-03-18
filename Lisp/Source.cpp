@@ -50,13 +50,13 @@ int main(int argc, char* argv[])
 	logger << "Parsing..." << std::endl;
 
 	Parser parser(tokens);
-	std::vector<Node::Stmt> stmts = parser.parse_prog();
+	std::vector<Node::Node> nodes = parser.parse_prog();
 
 	logger << "Statements :" << std::endl;
 
-	for (const Node::Stmt& stmt : stmts)
+	for (const Node::Node& node : nodes)
 	{
-		logger << Parser::node_to_string(stmt) << std::endl;
+		logger << Parser::node_to_string(node) << std::endl;
 	}
 
 	logger << "Finished Statements" << std::endl;
@@ -64,8 +64,8 @@ int main(int argc, char* argv[])
 	logger << "Parsing completed" << std::endl;
 
 	logger << "Interpreting..." << std::endl;
-	
-	Interpreter interpreter(stmts);
+
+	Interpreter interpreter(nodes);
 	interpreter.interpret_prog();
 
 	logger << "Interpreting completed" << std::endl;

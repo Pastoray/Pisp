@@ -1,34 +1,104 @@
 #include "Parser.h"
-#include "Logger.h"
+#include "Utils.h"
 
 Parser::Parser(std::vector<Token>& tokens) : m_tokens(std::move(tokens)), m_index(0) {}
 
-std::vector<Node::Stmt> Parser::parse_prog()
+std::vector<Node::Node> Parser::parse_prog()
 {
-	std::vector<Node::Stmt> prog;
+	std::vector<Node::Node> prog;
 	while (peek().has_value())
 	{
-		auto stmt = strict(parse_stmt());
-		prog.push_back(stmt);
+		auto node = strict(parse_node());
+		prog.push_back(node);
 	}
 	return prog;
 }
 
+std::optional<Node::Node> Parser::parse_node()
+{
+	if (auto node = parse_stmt())
+		return Node::Node{ std::move(node.value()) };
+
+	else if (auto node = parse_expr())
+		return Node::Node{ std::move(node.value()) };
+
+	else if (auto node = parse_struct())
+		return Node::Node{ std::move(node.value()) };
+
+	else if (auto node = parse_scope())
+		return Node::Node{ std::move(node.value()) };
+	
+	return {};
+}
+
+std::optional<Node::Lit> Parser::parse_lit()
+{
+	if (peek().has_value() && peek().value() == TokenTypes::Literal::INT)
+		return Node::Lit{ Node::LitInt{ std::stoi(consume().value.value()) } };
+
+	else if (peek().has_value() && peek().value() == TokenTypes::Literal::IDENT)
+		return Node::Lit{ Node::LitIdent{ consume().value.value() } };
+
+	return {};
+}
+
+std::optional<Node::Struct> Parser::parse_struct()
+{
+	if (auto node = parse_func_decl())
+		return Node::Struct{ std::move(node.value()) };
+	return {};
+}
+
+std::optional<Node::StructFuncDecl> Parser::parse_func_decl()
+{
+	if (!peek().has_value() || peek().value() != TokenTypes::Symbol::OPEN_PAREN ||
+		!peek(1).has_value() || peek(1).value() != TokenTypes::Struct::FUNC)
+		return {};
+
+	consume(2);
+
+	Node::StructFuncDecl node;
+	consume(); // '('
+
+	while (peek().has_value() && peek().value() != TokenTypes::Symbol::CLOSE_PAREN)
+	{
+		if (peek().value() != TokenTypes::Literal::IDENT)
+			err_exit(typeid(*this).name(), m_index, "Expected identifiers in function parameter list");
+
+		node.params.push_back(Node::LitIdent{ consume().value.value()});
+	}
+	consume(); // ')' (param list)
+	node.scope = strict(parse_scope());
+	consume(); // ')'
+	return node;
+}
+
 std::optional<Node::Expr> Parser::parse_expr()
 {
-	if (auto token = peek(); token.has_value() &&
-		(token.value() == TokenTypes::Literal::INT || token.value() == TokenTypes::Literal::IDENT))
+	if (auto token = peek(); token.has_value())
 	{
-		consume();
-		return Node::Expr{ 
-			token.value() == TokenTypes::Literal::INT ?
-			Node::Lit{ Node::LitInt{ std::stoi(token.value().value.value()) } } :
-			Node::Lit{ Node::LitIdent{ token.value().value.value() } }
-		};
+		if (auto lit = parse_lit())
+			return Node::Expr{ std::move(lit.value()) };
+
+		else if (auto call = parse_call())
+			return Node::Expr{ call.value() };
+
 	}
 	if (!peek().has_value() || peek().value() != TokenTypes::Symbol::OPEN_PAREN) return {};
+	if (auto token = peek(1); !token.has_value() ||
+		(
+		token.value() != TokenTypes::Operator::ADD &&
+		token.value() != TokenTypes::Operator::SUB &&
+		token.value() != TokenTypes::Operator::MULT &&
+		token.value() != TokenTypes::Operator::DIV &&
+		token.value() != TokenTypes::Operator::BW_AND &&
+		token.value() != TokenTypes::Operator::BW_OR &&
+		token.value() != TokenTypes::Operator::GT &&
+		token.value() != TokenTypes::Operator::LT
+		)
+	) return {};
 
-	consume(); // skip '('
+	consume(); // '('
 	Node::BinExpr node;
 	while (peek().has_value() && peek().value() != TokenTypes::Symbol::CLOSE_PAREN)
 	{
@@ -58,64 +128,45 @@ std::optional<Node::Expr> Parser::parse_expr()
 
 			else
 			{
-				if (node.op != TokenTypes::Operator::NONE)
+				if (node.op.has_value())
 				{
-					err_exit("Expected expression");
+					err_exit(typeid(*this).name(), m_index, "Expected expression");
 				}
-				node.op = token.extract<TokenTypes::Operator>();
+				node.op = std::get<TokenTypes::Operator>(token.type);
 			}
 			consume();
 		}
-		else if (auto token = peek().value(); token == TokenTypes::Literal::INT)
+		else if (auto lit = parse_lit())
 		{
-			if (node.lhs == nullptr)
-			{
-				node.lhs = std::make_shared<Node::Expr>(Node::Expr{ Node::Lit { Node::LitInt{ std::stoi(token.value.value()) } } });
-			}
-			else if (node.rhs == nullptr)
-			{
-				node.rhs = std::make_shared<Node::Expr>(Node::Expr{ Node::Lit { Node::LitInt{ std::stoi(token.value.value()) } } });
-			}
-			consume();
+			if (!node.lhs.has_value())
+				node.lhs = std::make_shared<Node::Expr>(Node::Expr{ std::move(lit.value()) });
+
+			else if (!node.rhs.has_value())
+				node.rhs = std::make_shared<Node::Expr>(Node::Expr{ std::move(lit.value()) });
+
 		}
-		else if (peek().value() == TokenTypes::Literal::IDENT)
+		else if (auto call = parse_call())
 		{
-			if (node.lhs == nullptr)
-			{
-				node.lhs = std::make_shared<Node::Expr>(Node::Expr{ Node::Lit { Node::LitIdent{ token.value.value() } } });
-			}
-			else if (node.rhs == nullptr)
-			{
-				node.rhs = std::make_shared<Node::Expr>(Node::Expr{ Node::Lit { Node::LitIdent{ token.value.value() } } });
-			}
-			consume();
+			if (!node.lhs.has_value())
+				node.lhs = std::make_shared<Node::Expr>(Node::Expr{ std::move(call.value()) });
+
+			else if (!node.rhs.has_value())
+				node.rhs = std::make_shared<Node::Expr>(Node::Expr{ std::move(call.value()) });
 		}
 		else if (peek().value() == TokenTypes::Symbol::OPEN_PAREN)
 		{
-			if (auto expr = parse_expr(); expr.has_value())
-			{
-				LOG_DEBUG(node_to_string(Node::Stmt{ expr.value() }));
-				if (node.lhs == nullptr)
-				{
-					node.lhs = std::make_shared<Node::Expr>(expr.value());
-				}
-				else
-				{
-					node.rhs = std::make_shared<Node::Expr>(expr.value());
-				}
-			}
-			else
-			{
-				err_exit("Expected sub-expression");
-			}
+			auto expr = strict(parse_expr()); // "Expected sub-expression"
+			logger << (node_to_string(Node::Node{ expr }));
 
+			if (!node.lhs.has_value())
+				node.lhs = std::make_shared<Node::Expr>(expr);
+
+			else
+				node.rhs = std::make_shared<Node::Expr>(expr);
 
 		}
 		else
-		{
 			return {};
-			// err_exit("Unrecognized token while parsing expression: " + Tokenizer::tokentype_to_string(peek().value().type));
-		}
 	}
 	consume();
 	return Node::Expr{ node };
@@ -133,11 +184,39 @@ std::optional<Node::Scope> Parser::parse_scope()
 			stmts.push_back(stmt);
 		}
 		if (peek().has_value()) consume(); // skip ')'
-		else err_exit("Expected ')'");
+		else err_exit(typeid(*this).name(), m_index, "Expected ')'");
 
 		return Node::Scope{ stmts };
 	}
 	return {};
+}
+
+std::optional<Node::NodeCall> Parser::parse_call()
+{
+	if (!peek().has_value() || peek().value() != TokenTypes::Symbol::OPEN_PAREN ||
+		!peek(1).has_value() || peek(1).value() != TokenTypes::Statement::CALL)
+		return {};
+
+	consume(2);
+
+	Node::NodeCall node;
+	if (peek().has_value() && peek().value() == TokenTypes::Literal::IDENT)
+		node.fn = Node::LitIdent{ consume().value.value() };
+
+	else if (auto fn = parse_func_decl())
+		node.fn = fn.value();
+
+	else
+		return {};
+
+	consume(); // '('
+	while (peek().has_value() && peek().value() != TokenTypes::Symbol::CLOSE_PAREN)
+		node.args.push_back(strict(parse_expr()));
+	
+	consume(); // ')' (arg list)
+	consume(); // ')' (stmt end)
+
+	return node;
 }
 
 std::optional<Node::StmtIf> Parser::parse_if_chain()
@@ -156,9 +235,7 @@ std::optional<Node::StmtIf> Parser::parse_if_chain()
 			node.scope = std::make_shared<Node::Scope>(strict(parse_scope()));
 			consume();
 			if (auto if_chain = parse_if_chain(); if_chain.has_value())
-			{
 				node.elif = std::make_shared<Node::StmtIf>(if_chain.value());
-			}
 
 			return node;
 		}
@@ -167,10 +244,10 @@ std::optional<Node::StmtIf> Parser::parse_if_chain()
 		node.cond = Node::Expr{ Node::Lit{ Node::LitInt{ 1 } } };
 		node.scope = std::make_shared<Node::Scope>(strict(parse_scope()));
 
-		consume(); // skip ')'
+		consume(); // ')'
 		return node;
 	}
-	return {}; // no elif chain exists
+	return {}; // no elif
 }
 
 std::optional<Node::StmtAsgn> Parser::parse_asgn_stmt()
@@ -181,20 +258,25 @@ std::optional<Node::StmtAsgn> Parser::parse_asgn_stmt()
 		consume(2);
 		Node::StmtAsgn node;
 
-		if (auto token = peek(); !token.has_value() || token.value() != TokenTypes::Literal::IDENT) return {}; // expected identifier
+		if (auto token = peek(); !token.has_value() || token.value() != TokenTypes::Literal::IDENT) return {};
 
 		auto ident = consume();
 		node.id = Node::LitIdent{ ident.value.value() };
-		auto expr = parse_expr();
-		if (!expr.has_value()) return {}; // expected expression
 		
-		node.expr = expr.value();
+		if (auto expr = parse_expr())
+			node.val = expr.value();
 
-		consume(); // skip ')'
+		else if (auto strct = parse_struct())
+			node.val = strct.value();
+
+		else
+			err_exit(typeid(*this).name(), m_index, "Expected expression after assignment");
+
+		consume(); // ')'
 		return node;
 
 	}
-	return {}; // there's no assigment statement
+	return {}; // no assigment
 }
 
 std::optional<Node::StmtIf> Parser::parse_if_stmt()
@@ -208,7 +290,7 @@ std::optional<Node::StmtIf> Parser::parse_if_stmt()
 
 		node.cond = expr;
 		node.scope = std::make_shared<Node::Scope>(strict(parse_scope()));
-		consume(); // skip ')'
+		consume(); // ')'
 
 		if (auto if_chain = parse_if_chain(); if_chain.has_value())
 		{
@@ -217,7 +299,7 @@ std::optional<Node::StmtIf> Parser::parse_if_stmt()
 		
 		return node;
 	}
-	return {}; // there's no if statement
+	return {}; // no if
 }
 
 std::optional<Node::StmtLoop> Parser::parse_loop_stmt()
@@ -234,10 +316,23 @@ std::optional<Node::StmtLoop> Parser::parse_loop_stmt()
 		node.adv = parse_asgn_stmt();
 		node.scope = std::make_shared<Node::Scope>(strict(parse_scope()));
 		
-		consume(); // skip ')'
+		consume(); // ')'
 		return node;
 	}
-	return {}; // there's no loop statement
+	return {}; // no loop
+}
+
+std::optional<Node::StmtRet> Parser::parse_ret_stmt()
+{
+	if (!peek().has_value() || peek().value() != TokenTypes::Symbol::OPEN_PAREN ||
+		!peek(1).has_value() || peek(1).value() != TokenTypes::Statement::RET)
+
+		return {};
+
+	consume(2);
+	Node::StmtRet ret_node{ parse_expr() };
+	consume();
+	return ret_node;
 }
 
 std::optional<Node::Stmt> Parser::parse_stmt()
@@ -252,16 +347,10 @@ std::optional<Node::Stmt> Parser::parse_stmt()
 	else if (auto node = parse_loop_stmt())
 		ret_node = Node::Stmt{ node.value() };
 
-	else if (auto node = parse_expr())
+	else if (auto node = parse_ret_stmt())
 		ret_node = Node::Stmt{ node.value() };
 
 	return ret_node;
-}
-
-void Parser::err_exit(const std::string& msg)
-{
-	std::cerr << "[ERROR]" << "[INDEX:" << m_index << "]" << " -> " << msg << std::endl;
-	exit(EXIT_FAILURE);
 }
 
 [[nodiscard]] std::optional<Token> Parser::peek(int offset)
@@ -275,7 +364,7 @@ void Parser::err_exit(const std::string& msg)
 {
 	if (amount == 0) [[unlikely]]
 	{
-		err_exit("Consume called with a value of 0");
+		err_exit(typeid(*this).name(), m_index, "Consume called with a value of 0");
 	}
 
 	m_index += amount;

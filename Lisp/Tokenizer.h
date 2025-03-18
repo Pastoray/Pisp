@@ -8,6 +8,8 @@
 #include <variant>
 #include <iostream>
 
+#include "Utils.h"
+
 namespace TokenTypes
 {
 	enum class Symbol
@@ -33,7 +35,6 @@ namespace TokenTypes
 		OR, // |
 		BW_AND, // bitwise &
 		BW_OR, // bitwise |
-		RET, // return
 		NONE, // temporary place holder
 	};
 
@@ -49,12 +50,19 @@ namespace TokenTypes
 		IF, // if
 		ELSE, // else
 		LOOP, // for
-		FUNC, // function
+		RET, // return
+		CALL, // function call
 		NONE, // temporary place holder
+	};
+
+	enum class Struct
+	{
+		FUNC, // function
 	};
 }
 
-using TokenType = std::variant<TokenTypes::Symbol, TokenTypes::Operator, TokenTypes::Literal, TokenTypes::Statement>;
+using TokenType = std::variant<TokenTypes::Symbol, TokenTypes::Operator, TokenTypes::Literal,
+	TokenTypes::Statement, TokenTypes::Struct>;
 
 struct Token
 {
