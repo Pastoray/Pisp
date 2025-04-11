@@ -4,7 +4,7 @@
 #include <sstream>
 #include "Tokenizer.h"
 #include "Parser.h"
-#include "Interpreter.h"
+#include "Compiler.h"
 #include "Utils.h"
 
 int main(int argc, char* argv[])
@@ -63,12 +63,20 @@ int main(int argc, char* argv[])
 
 	logger << "Parsing completed" << std::endl;
 
-	logger << "Interpreting..." << std::endl;
+	logger << "Compiling..." << std::endl;
 
-	Interpreter interpreter(nodes);
-	interpreter.interpret_prog();
+	Compiler compiler(nodes);
+	const auto vec = compiler.compile_prog();
 
-	logger << "Interpreting completed" << std::endl;
+	logger << "Compilation completed\n" << std::endl;
+
+	for (int i = 0; i < vec.size(); i++)
+	{
+		std::string instr_str = format_instr(vec[i]);
+		std::string padding = std::string(32 - instr_str.size(), ' ');
+		logger << instr_str << padding << "(" << i << ")" << "\n";
+	}
+	std::cout << std::endl;
 
 
 	return EXIT_SUCCESS;
