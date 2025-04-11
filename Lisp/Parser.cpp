@@ -63,7 +63,7 @@ std::optional<Node::StructFuncDecl> Parser::parse_func_decl()
 	while (peek().has_value() && peek().value() != TokenTypes::Symbol::CLOSE_PAREN)
 	{
 		if (peek().value() != TokenTypes::Literal::IDENT)
-			err_exit(typeid(*this).name(), m_index, "Expected identifiers in function parameter list");
+			err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected identifiers in function parameter list", typeid(*this).name());
 
 		node.params.push_back(Node::LitIdent{ consume().value.value()});
 	}
@@ -89,12 +89,16 @@ std::optional<Node::Expr> Parser::parse_expr()
 		(
 		token.value() != TokenTypes::Operator::ADD &&
 		token.value() != TokenTypes::Operator::SUB &&
-		token.value() != TokenTypes::Operator::MULT &&
+		token.value() != TokenTypes::Operator::MUL &&
 		token.value() != TokenTypes::Operator::DIV &&
 		token.value() != TokenTypes::Operator::BW_AND &&
 		token.value() != TokenTypes::Operator::BW_OR &&
+		token.value() != TokenTypes::Operator::AND &&
+		token.value() != TokenTypes::Operator::OR &&
 		token.value() != TokenTypes::Operator::GT &&
-		token.value() != TokenTypes::Operator::LT
+		token.value() != TokenTypes::Operator::LT &&
+		token.value() != TokenTypes::Operator::GTE &&
+		token.value() != TokenTypes::Operator::LTE
 		)
 	) return {};
 
@@ -106,34 +110,22 @@ std::optional<Node::Expr> Parser::parse_expr()
 			auto token = peek().value();
 			token == TokenTypes::Operator::ADD ||
 			token == TokenTypes::Operator::SUB ||
-			token == TokenTypes::Operator::MULT ||
+			token == TokenTypes::Operator::MUL ||
 			token == TokenTypes::Operator::DIV ||
 			token == TokenTypes::Operator::BW_AND ||
 			token == TokenTypes::Operator::BW_OR ||
+			token == TokenTypes::Operator::AND ||
+			token == TokenTypes::Operator::OR ||
 			token == TokenTypes::Operator::GT ||
-			token == TokenTypes::Operator::LT
+			token == TokenTypes::Operator::LT ||
+			token == TokenTypes::Operator::GTE ||
+			token == TokenTypes::Operator::LTE
 			)
 		{
-			if (node.op == TokenTypes::Operator::BW_OR && token == TokenTypes::Operator::BW_OR)
-				node.op = TokenTypes::Operator::OR;
+			if (node.op.has_value())
+				err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected expression", typeid(*this).name());
 
-			else if (node.op == TokenTypes::Operator::BW_AND && token == TokenTypes::Operator::BW_AND)
-				node.op = TokenTypes::Operator::AND;
-
-			else if (node.op == TokenTypes::Operator::GT && token == TokenTypes::Operator::ASGN)
-				node.op = TokenTypes::Operator::GTE;
-
-			else if (node.op == TokenTypes::Operator::LT && token == TokenTypes::Operator::ASGN)
-				node.op = TokenTypes::Operator::LTE;
-
-			else
-			{
-				if (node.op.has_value())
-				{
-					err_exit(typeid(*this).name(), m_index, "Expected expression");
-				}
-				node.op = std::get<TokenTypes::Operator>(token.type);
-			}
+			node.op = std::get<TokenTypes::Operator>(token.type);
 			consume();
 		}
 		else if (auto lit = parse_lit())
@@ -184,14 +176,14 @@ std::optional<Node::Scope> Parser::parse_scope()
 			stmts.push_back(stmt);
 		}
 		if (peek().has_value()) consume(); // skip ')'
-		else err_exit(typeid(*this).name(), m_index, "Expected ')'");
+		else err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected ')'", typeid(*this).name());
 
 		return Node::Scope{ stmts };
 	}
 	return {};
 }
 
-std::optional<Node::NodeCall> Parser::parse_call()
+std::optional<Node::Call> Parser::parse_call()
 {
 	if (!peek().has_value() || peek().value() != TokenTypes::Symbol::OPEN_PAREN ||
 		!peek(1).has_value() || peek(1).value() != TokenTypes::Statement::CALL)
@@ -199,7 +191,7 @@ std::optional<Node::NodeCall> Parser::parse_call()
 
 	consume(2);
 
-	Node::NodeCall node;
+	Node::Call node;
 	if (peek().has_value() && peek().value() == TokenTypes::Literal::IDENT)
 		node.fn = Node::LitIdent{ consume().value.value() };
 
@@ -270,7 +262,7 @@ std::optional<Node::StmtAsgn> Parser::parse_asgn_stmt()
 			node.val = strct.value();
 
 		else
-			err_exit(typeid(*this).name(), m_index, "Expected expression after assignment");
+			err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected expression after assignment", typeid(*this).name());
 
 		consume(); // ')'
 		return node;
@@ -360,12 +352,10 @@ std::optional<Node::Stmt> Parser::parse_stmt()
 	return {};
 }
 
-[[nodiscard]] Token Parser::consume(unsigned int amount)
+Token Parser::consume(unsigned int amount)
 {
 	if (amount == 0) [[unlikely]]
-	{
-		err_exit(typeid(*this).name(), m_index, "Consume called with a value of 0");
-	}
+		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Consume called with a value of 0", typeid(*this).name());
 
 	m_index += amount;
 	return peek(-1).value(); // return last consumed token

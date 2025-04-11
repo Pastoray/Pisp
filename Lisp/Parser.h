@@ -65,7 +65,7 @@ namespace Node
 	};
 
 
-	struct NodeCall
+	struct Call
 	{
 		std::variant<LitIdent, StructFuncDecl> fn;
 		std::vector<Expr> args;
@@ -73,7 +73,7 @@ namespace Node
 
 	struct Expr
 	{
-		std::variant<BinExpr, Lit, NodeCall> expr;
+		std::variant<BinExpr, Lit, Call> expr;
 	};
 
 	struct StmtAsgn
@@ -131,7 +131,7 @@ public:
 	std::optional<Node::StmtAsgn> parse_asgn_stmt();
 	std::optional<Node::StmtIf> parse_if_stmt();
 	std::optional<Node::StmtLoop> parse_loop_stmt();
-	std::optional<Node::NodeCall> parse_call();
+	std::optional<Node::Call> parse_call();
 	std::optional<Node::StmtRet> parse_ret_stmt();
 	
 
@@ -222,7 +222,7 @@ public:
 
 
 private:
-	std::optional<Token> peek(int offset = 0);
+	[[nodiscard]] std::optional<Token> peek(int offset = 0);
 	Token consume(unsigned int amount = 1);
 
 	template<typename T>
@@ -231,7 +231,7 @@ private:
 	{
 		if (opt.has_value())
 			return opt.value();
-		err_exit(typeid(*this).name(), m_index, "Expected " + std::string(typeid(T::value_type).name()));
+		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected " + std::string(typeid(T::value_type).name()), typeid(*this).name());
 	}
 
 private:
