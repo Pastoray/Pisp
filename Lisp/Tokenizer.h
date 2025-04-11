@@ -23,7 +23,8 @@ namespace TokenTypes
 	enum class Operator
 	{
 		ASGN, // =
-		MULT, // *
+		EQL, // ==
+		MUL, // *
 		DIV, // /
 		ADD, // +
 		SUB, // -
@@ -88,7 +89,7 @@ public:
 	static std::string tokentype_to_string(TokenType type);
 
 private:
-	std::optional<char> peek(int offset = 0);
+	[[nodiscard]] std::optional<char> peek(int offset = 0);
 	char consume(unsigned int amount = 1);
 
 private:

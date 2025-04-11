@@ -46,10 +46,20 @@ std::vector<Token> Tokenizer::tokenize()
 		}
 		else if (peek().value() == '=')
 		{
-			Token token{};
-			token.type = TokenTypes::Operator::ASGN;
-			tokens.push_back(token);
 			consume();
+			if (peek().has_value() && peek().value() == '=')
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::EQL;
+				tokens.push_back(token);
+				consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::ASGN;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == '(')
 		{
@@ -82,7 +92,7 @@ std::vector<Token> Tokenizer::tokenize()
 		else if (peek().value() == '*')
 		{
 			Token token{};
-			token.type = TokenTypes::Operator::MULT;
+			token.type = TokenTypes::Operator::MUL;
 			tokens.push_back(token);
 			consume();
 		}
@@ -103,10 +113,20 @@ std::vector<Token> Tokenizer::tokenize()
 		}
 		else if (peek().value() == '>')
 		{
-			Token token{};
-			token.type = TokenTypes::Operator::GT;
-			tokens.push_back(token);
 			consume();
+			if (peek().has_value() && peek().value() == '=')
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::GTE;
+				tokens.push_back(token);
+				consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::GT;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == '<')
 		{
@@ -118,6 +138,13 @@ std::vector<Token> Tokenizer::tokenize()
 				token.type = TokenTypes::Statement::RET;
 				tokens.push_back(token);
 			}
+			else if (peek().has_value() && peek().value() == '=')
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::LTE;
+				tokens.push_back(token);
+				consume();
+			}
 			else
 			{
 				Token token{};
@@ -127,17 +154,37 @@ std::vector<Token> Tokenizer::tokenize()
 		}
 		else if (peek().value() == '&')
 		{
-			Token token{};
-			token.type = TokenTypes::Operator::BW_AND;
-			tokens.push_back(token);
 			consume();
+			if (peek().has_value() && peek().value() == '&')
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::AND;
+				tokens.push_back(token);
+				consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::BW_AND;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == '|')
 		{
-			Token token{};
-			token.type = TokenTypes::Operator::BW_OR;
-			tokens.push_back(token);
 			consume();
+			if (peek().has_value() && peek().value() == '|')
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::OR;
+				tokens.push_back(token);
+				consume();
+			}
+			else
+			{
+				Token token{};
+				token.type = TokenTypes::Operator::BW_OR;
+				tokens.push_back(token);
+			}
 		}
 		else if (peek().value() == '?')
 		{
@@ -164,9 +211,8 @@ std::vector<Token> Tokenizer::tokenize()
 				consume();
 			}
 			else
-			{
-				err_exit(typeid(*this).name(), m_index, "Error tokenizing");
-			}
+				err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Error tokenizing", typeid(*this).name());
+
 		}
 		else if (peek().value() == '@')
 		{
@@ -194,19 +240,17 @@ std::vector<Token> Tokenizer::tokenize()
 	return tokens;
 }
 
-std::optional<char> Tokenizer::peek(int offset)
+[[nodiscard]] std::optional<char> Tokenizer::peek(int offset)
 {
 	if (m_index + offset < m_src.size())
 		return m_src[m_index + offset];
 	return {};
 }
 
-[[nodiscard]] char Tokenizer::consume(unsigned int amount)
+char Tokenizer::consume(unsigned int amount)
 {
 	if (amount == 0) [[unlikely]]
-	{
-		err_exit(typeid(*this).name(), m_index, "Consume called with a value of 0");
-	}
+		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Consume called with a value of 0", typeid(*this).name());
 
 	m_index += amount;
 	return peek(-1).value(); // return last consumed token
@@ -241,13 +285,14 @@ std::string Tokenizer::tokentype_to_string(TokenType type)
 					return "literal none";
 			}
 		}
+
 		else if constexpr (std::is_same_v<T, TokenTypes::Operator>)
 		{
 			switch (arg)
 			{
 				case TokenTypes::Operator::ASGN:
 					return "=";
-				case TokenTypes::Operator::MULT:
+				case TokenTypes::Operator::MUL:
 					return "*";
 				case TokenTypes::Operator::DIV:
 					return "/";
