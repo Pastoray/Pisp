@@ -14,8 +14,8 @@ struct NullStream
 #define logger null_logger
 #endif
 
-inline void err_exit(const std::string & context, const size_t index, const std::string & msg)
-{
-	std::cerr << "[ERROR]" << "[CONTEXT:" << context << "]" << "[INDEX:" << index << "]" << " -> " << msg << std::endl;
-	exit(EXIT_FAILURE);
-}
+
+void err_exit(const std::string& msg, const std::string& context = "NONE");
+
+struct Instr;
+std::string format_instr(const Instr& instr);
