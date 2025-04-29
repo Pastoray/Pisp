@@ -1,5 +1,25 @@
 #include "Compiler.h"
 
+void Compiler::print_env(const Env* env, int depth) // debug: function
+{
+	if (!env)
+	{
+		std::cout << std::string(depth * 2, ' ') << "Env: nullptr\n";
+		return;
+	}
+
+	std::string indent(depth * 2, ' ');
+	std::cout << indent << "Env {\n";
+	std::cout << indent << "  start: " << env->start << "\n";
+	std::cout << indent << "  stack_idx: " << env->stack_idx << "\n";
+	std::cout << indent << "  locals.size(): " << env->locals.size() << "\n";
+	std::cout << indent << "  parent: " << (env->parent ? "non-null" : "nullptr") << "\n";
+	std::cout << indent << "}\n";
+
+	if (env->parent)
+		print_env(env->parent, depth + 1);
+}
+
 std::string opcode_to_string(OpCode code)
 {
 	switch (code)
@@ -163,7 +183,8 @@ void Compiler::compile_ret(const Node::StmtRet& node)
 	if (node.ret_val.has_value())
 		compile_expr(node.ret_val.value());
 
-	push_instr(OpCode::MOV, { ValueType::VAR, -1 }); // bp - 1 because stack[bp] == return address
+	push_instr(OpCode::MOV, { ValueType::VAR, -3 }); // bp - 3 [return_val, return_addr, prev_bp, args..]
+													 //           bp - 3 <------------------------ bp
 
 	for (int i = 0; i < m_curr_env->locals.size(); i++)
 		push_instr(OpCode::POP, { ValueType::NOT_REQUIRED, -1 });
@@ -215,12 +236,13 @@ void Compiler::compile_struct(const Node::Struct& node)
 		Compiler& compiler;
 		void operator()(const Node::StructFuncDecl& fn_decl)
 		{
-			compiler.push_instr(OpCode::PUSH_SF, { ValueType::NOT_REQUIRED, -1 });
+			// now called before evaluating arguments of every call so the bp is in the appropriate slot
+			// compiler.push_instr(OpCode::PUSH_SF, { ValueType::NOT_REQUIRED, -1 });
 			Env* new_env = new Env();
 			
 			new_env->parent = compiler.m_curr_env;
 			new_env->start = compiler.m_bytecode.size();
-			new_env->stack_idx = new_env->parent->stack_idx + new_env->parent->locals.size();
+			new_env->stack_idx = new_env->parent->stack_idx + new_env->parent->locals.size() + 3;
 
 			for (int i = 0; i < fn_decl.params.size(); i++)
 			{
@@ -234,7 +256,9 @@ void Compiler::compile_struct(const Node::Struct& node)
 			for (int i = 0; i < new_env->locals.size(); i++)
 				compiler.push_instr(OpCode::POP, { ValueType::NOT_REQUIRED, -1 });
 
-			compiler.m_curr_env = new_env->parent;
+			auto parent = new_env->parent;
+			delete new_env;
+			compiler.m_curr_env = parent;
 			compiler.push_instr(OpCode::POP_SF, { ValueType::NOT_REQUIRED, -1 });
 		}
 	};
@@ -320,10 +344,11 @@ void Compiler::compile_expr(const Node::Expr& node)
 				void operator()(const Node::LitIdent& ident)
 				{
 					auto loc = compiler.find_var(ident.id);
-					if (loc != -1)
+					if (true)
 					{
-						Value val = { ValueType::VAR, static_cast<int>(loc)};
-						compiler.push_instr(OpCode::PUSH, val);
+						// int var_loc = loc - static_cast<int>(compiler.m_curr_env->stack_idx);
+						// Value val = { ValueType::VAR, var_loc };
+						compiler.push_instr(OpCode::PUSH, loc);
 					}
 
 					else
@@ -358,18 +383,27 @@ void Compiler::compile_call(const Node::Call& node)
 		void operator()(const Node::LitIdent& ident)
 		{
 			auto loc = compiler.find_func(ident.id);
-			if (loc != -1)
+			if (true)
 			{
 				compiler.push_instr(OpCode::PUSH, { ValueType::NIL, -1 }); // return value
 
 				size_t push_idx = compiler.m_bytecode.size();
 				compiler.push_instr(OpCode::PUSH, { ValueType::LIT, -1 }); // return address
 
+				size_t h = compiler.m_bytecode.size();
+				compiler.push_instr(OpCode::PUSH_SF, { ValueType::NOT_REQUIRED, -1 }); // push bp before args
+
 				for (const Node::Expr& arg : args)
 					compiler.compile_expr(arg);
 
-				int func_loc = static_cast<int>(loc);
-				compiler.push_instr(OpCode::JMP, { ValueType::VAR, func_loc });
+				compiler.print_env(compiler.m_curr_env);
+
+				// int func_loc = loc - static_cast<int>(compiler.m_curr_env->stack_idx);
+				// std::cout << "SF LOC: " << compiler.m_curr_env->stack_idx << "\n";
+				// std::cout << "VAR LOC: " << loc << "\n";
+				// std::cout << "FUNC LOC: " << func_loc << "\n";
+					
+				compiler.push_instr(OpCode::JMP, loc);
 				compiler.m_bytecode[push_idx].val.operand = compiler.m_bytecode.size(); // return address
 			}
 			else
@@ -400,7 +434,7 @@ void Compiler::push_instr(OpCode code, Value val)
 }
 
 
-int Compiler::find_func(const std::string& name)
+Value Compiler::find_func(const std::string& name)
 {
 	Env* curr = m_curr_env;
 
@@ -408,14 +442,19 @@ int Compiler::find_func(const std::string& name)
 	{
 		auto it = curr->locals.funcs.find(name);
 		if (it != curr->locals.funcs.end())
-			return it->second;
+		{
+			if (curr == m_curr_env) // comparing pointers
+				return { ValueType::VAR, static_cast<int>(curr->stack_idx + it->second - static_cast<int>(m_curr_env->stack_idx)) }; // relative to the current bp
+
+			return { ValueType::ABS_VAR, static_cast<int>(curr->stack_idx + it->second) }; // absolute stack index
+		}
 
 		curr = curr->parent;
 	}
-	return -1;
+	err_exit("Fatal: couldn't find func with name: " + name, "find_func");
 }
 
-int Compiler::find_var(const std::string& name)
+Value Compiler::find_var(const std::string& name)
 {
 	Env* curr = m_curr_env;
 
@@ -423,9 +462,14 @@ int Compiler::find_var(const std::string& name)
 	{
 		auto it = curr->locals.vars.find(name);
 		if (it != curr->locals.vars.end())
-			return it->second;
+		{
+			if (curr == m_curr_env) // comparing pointers
+				return { ValueType::VAR, static_cast<int>(curr->stack_idx + it->second - static_cast<int>(m_curr_env->stack_idx)) }; // relative to the current bp
+
+			return { ValueType::ABS_VAR, static_cast<int>(curr->stack_idx + it->second) }; // absolute stack index
+		}
 
 		curr = curr->parent;
 	}
-	return -1;
+	err_exit("Fatal: couldn't find variable with name: " + name, "find_var");
 }

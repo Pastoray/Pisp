@@ -37,6 +37,7 @@ enum class ValueType
 {
 	LIT,
 	VAR,
+	ABS_VAR,
 	NIL,
 	NOT_REQUIRED
 };
@@ -91,12 +92,13 @@ public:
 	void compile_call(const Node::Call& node);
 
 private:
+	void print_env(const Env* env, int depth = 0);
 	void push_instr(OpCode code, Value val);
-	int find_func(const std::string& name);
-	int find_var(const std::string& name);
+	Value find_func(const std::string& name);
+	Value find_var(const std::string& name);
 
 private:
-	std::vector<Node::Node> m_nodes;
+	const std::vector<Node::Node> m_nodes;
 	std::vector<Instr> m_bytecode;
 	Env* m_curr_env;
 };
