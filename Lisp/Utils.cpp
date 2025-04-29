@@ -1,12 +1,6 @@
 #include "Utils.h"
 #include "Compiler.h"
 
-void err_exit(const std::string& msg, const std::string& context)
-{
-	std::cerr << "[ERROR]" << " -> " << context << ": " << msg << std::endl;
-	exit(EXIT_FAILURE);
-}
-
 std::string format_instr(const Instr& instr)
 {
 	std::stringstream ss;

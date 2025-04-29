@@ -43,7 +43,7 @@ void VM::exec_next()
 
 		case (OpCode::HLT): hlt(); break;
 
-		default: err_exit("Unknown opcode");
+		default: ERR_EXIT("Unknown opcode");
 	}
 }
 
@@ -308,7 +308,7 @@ void VM::jmp_zero(Value val)
 
 void VM::hlt()
 {
-	std::cout << "*Program Finished..*" << std::endl;
+	LOGGER << "*Program Finished..*" << std::endl;
 	std::cin.get();
 	m_ip++;
 }

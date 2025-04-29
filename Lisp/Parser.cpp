@@ -63,7 +63,7 @@ std::optional<Node::StructFuncDecl> Parser::parse_func_decl()
 	while (peek().has_value() && peek().value() != TokenTypes::Symbol::CLOSE_PAREN)
 	{
 		if (peek().value() != TokenTypes::Literal::IDENT)
-			err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected identifiers in function parameter list", typeid(*this).name());
+			ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected identifiers in function parameter list");
 
 		node.params.push_back(Node::LitIdent{ consume().value.value()});
 	}
@@ -123,7 +123,7 @@ std::optional<Node::Expr> Parser::parse_expr()
 			)
 		{
 			if (node.op.has_value())
-				err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected expression", typeid(*this).name());
+				ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected expression");
 
 			node.op = std::get<TokenTypes::Operator>(token.type);
 			consume();
@@ -148,7 +148,7 @@ std::optional<Node::Expr> Parser::parse_expr()
 		else if (peek().value() == TokenTypes::Symbol::OPEN_PAREN)
 		{
 			auto expr = strict(parse_expr()); // "Expected sub-expression"
-			logger << (node_to_string(Node::Node{ expr }));
+			LOGGER << (node_to_string(Node::Node{ expr }));
 
 			if (!node.lhs.has_value())
 				node.lhs = std::make_shared<Node::Expr>(expr);
@@ -176,7 +176,7 @@ std::optional<Node::Scope> Parser::parse_scope()
 			stmts.push_back(stmt);
 		}
 		if (peek().has_value()) consume(); // skip ')'
-		else err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected ')'", typeid(*this).name());
+		else ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected ')'");
 
 		return Node::Scope{ stmts };
 	}
@@ -262,7 +262,7 @@ std::optional<Node::StmtAsgn> Parser::parse_asgn_stmt()
 			node.val = strct.value();
 
 		else
-			err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected expression after assignment", typeid(*this).name());
+			ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected expression after assignment");
 
 		consume(); // ')'
 		return node;
@@ -355,7 +355,7 @@ std::optional<Node::Stmt> Parser::parse_stmt()
 Token Parser::consume(unsigned int amount)
 {
 	if (amount == 0) [[unlikely]]
-		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Consume called with a value of 0", typeid(*this).name());
+		ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Consume called with a value of 0");
 
 	m_index += amount;
 	return peek(-1).value(); // return last consumed token

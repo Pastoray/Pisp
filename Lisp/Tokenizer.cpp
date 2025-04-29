@@ -18,7 +18,7 @@ std::vector<Token> Tokenizer::tokenize()
 		{
 			while (peek().has_value() && std::isdigit(peek().value()))
 			{
-				logger << "digit index: " << m_index << std::endl;
+				LOGGER << "digit index: " << m_index << std::endl;
 				buffer += m_src[m_index];
 				consume();
 			}
@@ -211,7 +211,7 @@ std::vector<Token> Tokenizer::tokenize()
 				consume();
 			}
 			else
-				err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Error tokenizing", typeid(*this).name());
+				ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Error tokenizing");
 
 		}
 		else if (peek().value() == '@')
@@ -250,7 +250,7 @@ std::vector<Token> Tokenizer::tokenize()
 char Tokenizer::consume(unsigned int amount)
 {
 	if (amount == 0) [[unlikely]]
-		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Consume called with a value of 0", typeid(*this).name());
+		ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Consume called with a value of 0");
 
 	m_index += amount;
 	return peek(-1).value(); // return last consumed token

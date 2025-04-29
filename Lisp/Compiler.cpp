@@ -4,17 +4,17 @@ void Compiler::print_env(const Env* env, int depth) // debug: function
 {
 	if (!env)
 	{
-		std::cout << std::string(depth * 2, ' ') << "Env: nullptr\n";
+		LOGGER << std::string(depth * 2, ' ') << "Env: nullptr\n";
 		return;
 	}
 
 	std::string indent(depth * 2, ' ');
-	std::cout << indent << "Env {\n";
-	std::cout << indent << "  start: " << env->start << "\n";
-	std::cout << indent << "  stack_idx: " << env->stack_idx << "\n";
-	std::cout << indent << "  locals.size(): " << env->locals.size() << "\n";
-	std::cout << indent << "  parent: " << (env->parent ? "non-null" : "nullptr") << "\n";
-	std::cout << indent << "}\n";
+	LOGGER << indent << "Env {\n";
+	LOGGER << indent << "  start: " << env->start << "\n";
+	LOGGER << indent << "  stack_idx: " << env->stack_idx << "\n";
+	LOGGER << indent << "  locals.size(): " << env->locals.size() << "\n";
+	LOGGER << indent << "  parent: " << (env->parent ? "non-null" : "nullptr") << "\n";
+	LOGGER << indent << "}\n";
 
 	if (env->parent)
 		print_env(env->parent, depth + 1);
@@ -332,7 +332,7 @@ void Compiler::compile_expr(const Node::Expr& node)
 					break;
 
 				default:
-					err_exit("Operator not allowed", typeid(*this).name());
+					ERR_EXIT("Operator not allowed");
 
 			}
 		}
@@ -353,7 +353,7 @@ void Compiler::compile_expr(const Node::Expr& node)
 
 					else
 					{
-						err_exit("Undefined variable: \"" + ident.id + "\"", "Symbol table");
+						ERR_EXIT("Undefined variable: \"", ident.id, "\"");
 					}
 
 				}
@@ -399,16 +399,16 @@ void Compiler::compile_call(const Node::Call& node)
 				compiler.print_env(compiler.m_curr_env);
 
 				// int func_loc = loc - static_cast<int>(compiler.m_curr_env->stack_idx);
-				// std::cout << "SF LOC: " << compiler.m_curr_env->stack_idx << "\n";
-				// std::cout << "VAR LOC: " << loc << "\n";
-				// std::cout << "FUNC LOC: " << func_loc << "\n";
+				// LOGGER << "SF LOC: " << compiler.m_curr_env->stack_idx << "\n";
+				// LOGGER << "VAR LOC: " << loc << "\n";
+				// LOGGER << "FUNC LOC: " << func_loc << "\n";
 					
 				compiler.push_instr(OpCode::JMP, loc);
 				compiler.m_bytecode[push_idx].val.operand = compiler.m_bytecode.size(); // return address
 			}
 			else
 			{
-				std::cerr << "Warning: Couldn't find function " << "\"" << ident.id << "\"" << std::endl;
+				LOGGER << "Warning: Couldn't find function " << "\"" << ident.id << "\"" << std::endl;
 			}
 		}
 
@@ -451,7 +451,7 @@ Value Compiler::find_func(const std::string& name)
 
 		curr = curr->parent;
 	}
-	err_exit("Fatal: couldn't find func with name: " + name, "find_func");
+	ERR_EXIT("Fatal: couldn't find func with name: ", name);
 }
 
 Value Compiler::find_var(const std::string& name)
@@ -471,5 +471,5 @@ Value Compiler::find_var(const std::string& name)
 
 		curr = curr->parent;
 	}
-	err_exit("Fatal: couldn't find variable with name: " + name, "find_var");
+	ERR_EXIT("Fatal: couldn't find variable with name: ", name);
 }

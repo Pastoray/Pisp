@@ -141,7 +141,7 @@ public:
 			using T = std::decay_t<decltype(stmt)>;
 			std::stringstream res{};
 			std::string tab = std::string(depth * 2, ' ');
-			std::cout << tab.size() << std::endl;
+			LOGGER << tab.size() << std::endl;
 			res << tab << typeid(stmt).name() << " {\n";
 
 			if constexpr (std::is_same_v<T, Node::Expr>)
@@ -150,7 +150,7 @@ public:
 					using U = std::decay_t<decltype(expr)>;
 					std::stringstream temp{};
 					std::string inner_tab = std::string((depth + 1) * 2, ' ');
-					std::cout << inner_tab.size() << std::endl;
+					LOGGER << inner_tab.size() << std::endl;
 
 					
 
@@ -231,7 +231,7 @@ private:
 	{
 		if (opt.has_value())
 			return opt.value();
-		err_exit("[INDEX: " + std::to_string(m_index) + "] " + "Expected " + std::string(typeid(T::value_type).name()), typeid(*this).name());
+		ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected ", std::string(typeid(T::value_type).name()));
 	}
 
 private:
