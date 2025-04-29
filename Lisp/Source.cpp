@@ -5,6 +5,7 @@
 #include "Tokenizer.h"
 #include "Parser.h"
 #include "Compiler.h"
+#include "VM.h"
 #include "Utils.h"
 
 int main(int argc, char* argv[])
@@ -37,7 +38,7 @@ int main(int argc, char* argv[])
 	Tokenizer tokenizer(src.str());
 	std::vector<Token> tokens = tokenizer.tokenize();
 	logger << "TOKENS:" << std::endl;
-	for (int i = 0; i < tokens.size(); i++)
+	for (int i = 0; i < tokens.size(); i++) // debug: tokens
 	{
 		Token& token = tokens[i];
 		logger << Tokenizer::tokentype_to_string(token.type);
@@ -54,7 +55,7 @@ int main(int argc, char* argv[])
 
 	logger << "Statements :" << std::endl;
 
-	for (const Node::Node& node : nodes)
+	for (const Node::Node& node : nodes) // debug: nodes
 	{
 		logger << Parser::node_to_string(node) << std::endl;
 	}
@@ -66,11 +67,11 @@ int main(int argc, char* argv[])
 	logger << "Compiling..." << std::endl;
 
 	Compiler compiler(nodes);
-	const auto vec = compiler.compile_prog();
+	auto vec = compiler.compile_prog();
 
 	logger << "Compilation completed\n" << std::endl;
 
-	for (int i = 0; i < vec.size(); i++)
+	for (int i = 0; i < vec.size(); i++) // debug: bytecode
 	{
 		std::string instr_str = format_instr(vec[i]);
 		std::string padding = std::string(32 - instr_str.size(), ' ');
@@ -78,6 +79,8 @@ int main(int argc, char* argv[])
 	}
 	std::cout << std::endl;
 
+	VM vm(vec);
+	vm.run();
 
 	return EXIT_SUCCESS;
 }
