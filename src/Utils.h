@@ -5,25 +5,19 @@
 #define LOGGER std::cout
 #else
 
-class NullBuffer : public std::streambuf
+class Logger
 {
 public:
-	virtual int overflow(int c) { return c; }
+	Logger& operator<<(std::ostream& (*)(std::ostream&));
+	Logger& operator<<(std::ios& (*)(std::ios&));
+
+	template <typename T>
+	Logger& operator<<(const T&);
 };
 
-class NullStream : public std::ostream
-{
-public:
-	NullStream() : std::ostream(new NullBuffer()) {}
-	~NullStream()
-	{
-		delete this->rdbuf();
-	}
-};
+extern Logger g_logger;
 
-extern NullStream g_null_stream;
-
-#define LOGGER g_null_stream
+#define LOGGER g_logger
 #endif
 
 #define ERR_EXIT(...) \
