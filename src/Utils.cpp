@@ -1,6 +1,7 @@
 #include "Utils.h"
 #include "Compiler.h"
 
+NullStream g_null_logger;
 std::string format_instr(const Instr& instr)
 {
 	std::stringstream ss;
