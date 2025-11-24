@@ -8,6 +8,7 @@
 #include <optional>
 #include <cassert>
 #include <variant>
+#include <memory>
 
 #include <type_traits>
 #include <typeinfo>
@@ -178,38 +179,38 @@ public:
 			else if constexpr (std::is_same_v<T, Node::StmtAsgn>)
 			{
 				res << typeid(stmt.id).name() << std::endl;
-				res << node_to_string(Node::Stmt{ stmt.expr }, depth + 1);
+				res << node_to_string(Node::Node{ Node::Stmt{ stmt.expr }}, depth + 1);
 			}
 			else if constexpr (std::is_same_v<T, Node::StmtIf>)
 			{
-				res << node_to_string(Node::Stmt{ stmt.cond }, depth + 1) << std::endl;
+				res << node_to_string(Node::Node{ Node::Stmt{ stmt.cond }}, depth + 1) << std::endl;
 				res << "[";
 				for (const Node::Stmt& stmt : stmt.scope->stmts)
 				{
-					res << node_to_string(stmt);
+					res << node_to_string(Node::Node{ stmt });
 					res << ", ";
 				}
 				res << "]" << std::endl;
 				if (stmt.elif.has_value())
 				{
-					res << node_to_string(Node::Stmt{ *stmt.elif.value() }) << std::endl;;
+					res << node_to_string(Node::Node{ Node::Stmt{ *stmt.elif.value() }}) << std::endl;
 				}
 			}
 			else if constexpr (std::is_same_v<T, Node::StmtLoop>)
 			{
 				if (stmt.init.has_value())
 				{
-					res << node_to_string(Node::Stmt{ stmt.init.value() }) << std::endl;;
+					res << node_to_string(Node::Node{ Node::Stmt{ stmt.init.value() }}) << std::endl;;
 				}
-				res << node_to_string(Node::Stmt{ stmt.cond }) << std::endl;
+				res << node_to_string(Node::Node{ Node::Stmt{ stmt.cond }}) << std::endl;
 				if (stmt.adv.has_value())
 				{
-					res << node_to_string(Node::Stmt{ stmt.adv.value() }) << std::endl;;
+					res << node_to_string(Node::Node{ Node::Stmt{ stmt.adv.value() }}) << std::endl;;
 				}
 				res << "[";
 				for (const Node::Stmt& stmt : stmt.scope->stmts)
 				{
-					res << node_to_string(stmt);
+					res << node_to_string(Node::Node{ stmt });
 					res << ", ";
 				}
 				res << "]" << std::endl;
@@ -231,7 +232,7 @@ private:
 	{
 		if (opt.has_value())
 			return opt.value();
-		ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected ", std::string(typeid(T::value_type).name()));
+		ERR_EXIT("[INDEX: ", std::to_string(m_index), "] ", "Expected ", std::string(typeid(typename T::value_type).name()));
 	}
 
 private:

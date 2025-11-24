@@ -4,9 +4,6 @@
 Logger& Logger::operator<<(std::ostream& (*)(std::ostream&)) { return *this; }
 Logger& Logger::operator<<(std::ios& (*)(std::ios&)) { return *this; }
 
-template <typename T>
-Logger& Logger::operator<<(const T&) { return *this; }
-
 Logger g_logger;
 std::string format_instr(const Instr& instr)
 {

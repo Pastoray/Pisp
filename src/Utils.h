@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <sstream>
 
 #ifdef _DEBUG
 #define LOGGER std::cout
@@ -12,7 +13,10 @@ public:
 	Logger& operator<<(std::ios& (*)(std::ios&));
 
 	template <typename T>
-	Logger& operator<<(const T&);
+	Logger& operator<<(const T&)
+	{
+		return *this;
+	}
 };
 
 extern Logger g_logger;
